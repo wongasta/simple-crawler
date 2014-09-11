@@ -14,8 +14,17 @@ var output = {
 
 var allowedDomains = {
     'Test': ['http://yixinxia.com', 'http://www.yixinxia.com', 'http://acuherbxia.com', 'http://www.acuherbxia.com'],
-    'US': ['http://www.volusion.com', 'http://support.volusion.com/', 'http://experts.volusion.com/'],
+    'US': ['http://www.volusion.com', 'http://volusion.com'],
+    'UK': ['http://www.volusion.co.uk', 'http://volusion.co.uk'],
+    'Mozu': ['http://www.mozu.com', 'http://mozu.com'],
+    'Experts': ['http://experts.volusion.com/', 'http://www.experts.volusion.com/'],
+    'Support': ['http://support.volusion.com/', 'http://www.support.volusion.com/'],
     'currentDomain': ''
+};
+
+var expectedKeywords = {
+    'Test': ['Houston', 'Esheng'],
+    'Billion': ['$15', '15 billion', '$14', '14 billion']
 }
 
 process.argv.forEach(function (val, index, array) {
@@ -23,7 +32,7 @@ process.argv.forEach(function (val, index, array) {
 });
 
 var siteName = allowedDomains[args[2]];
-var keywords = args[3];
+var keywords = expectedKeywords[args[3]];
 
 var reuse = {
     'domainMatch': function ($,url) {
@@ -54,6 +63,22 @@ var reuse = {
             }
         });
         return temp;
+    },
+    'alreadyMatch': function(url){
+        if (visitedURL.indexOf(url) === -1) {
+            return true;
+        }else{
+            return false;
+        }
+    },
+    'keywordsMatch': function($, content){
+        var temp = false;
+        $.each(keywords, function(i,v){
+            if (content.toLowerCase().indexOf(v.toLowerCase()) > -1) {
+                temp = true;
+            }
+        });
+        return temp;
     }
 };
 
@@ -65,11 +90,13 @@ var c = new Crawler({
             console.log(error);
         } else {
 
-            console.log('Started: ' + result.request.href);
+            console.log('Crawling: ' + result.request.href);
 
             $('body *:not(:has(*))').each(function (i, v) {
-                if (v.innerHTML.toLowerCase().indexOf(keywords.toLowerCase()) > -1) {
 
+                var keywordsCheck = reuse.keywordsMatch($, v.innerHTML);
+
+                if(keywordsCheck){
                     var outputTemp = {
                         'href': result.request.href,
                         'content': v.innerHTML
@@ -85,6 +112,7 @@ var c = new Crawler({
                         }
                     });
                 }
+
             });
 
             $("a").each(function (index, a) {
@@ -93,14 +121,13 @@ var c = new Crawler({
                 var domainCheck = reuse.domainMatch($, link);
                 var poundCheck = reuse.poundMatch(link);
                 var excCheck = reuse.excMatch($, link);
+                var alreadyCheck = reuse.alreadyMatch(link);
 
-                if ((domainCheck) && (poundCheck) && (excCheck)) {
-                    if (visitedURL.indexOf(a.href) === -1) {
-                        visitedURL.push(a.href);
-                        console.log('Crawling: ' + a.href);
-                        output.crawled.push(a.href);
-                        c.queue(a.href);
-                    }
+                if ((domainCheck) && (poundCheck) && (excCheck) && (alreadyCheck)) {
+                    visitedURL.push(link);
+                    console.log('Target: ' + link);
+                    output.crawled.push(link);
+                    c.queue(link);
                 } else {
                     //output.excluded.push(a.href);
                 }
@@ -112,5 +139,9 @@ var c = new Crawler({
     }
 });
 
+if((siteName) && (keywords) && (args[2] !== 'currentDomain')){
+    c.queue(siteName);
+}else{
+    console.log('Arguments incorrect. Please redefine.')
+}
 
-c.queue(siteName);
