@@ -160,8 +160,6 @@ var c = new Crawler({
                     visitedURL.push(link);
                     console.log('Target: ' + link);
                     output.crawled.push(link);
-                    //Upon every instance of crawled url the crawler will write to output file via fs module
-                    reuse.writeToFile(output);
                     //Recursively crawl through approved links
                     c.queue(link);
                 } else {
